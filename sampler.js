@@ -1,3 +1,4 @@
+var freeagent_token = '';
 // Refresh access token on page load but don't do anything else until the request has been processed
 // If an access token is found then functionality will be added to the page in the "LoadItUp" method
 refreshToken( '3ZmVwTjVPKmdHDmBhpq-uA', 'yF4e7ajdL0M5YPv-Eh3eTg', '1rZkfkZxrhIlWFHrJ7K_P95LBIXzlYJ0rYORQ5ySo' );
@@ -46,12 +47,38 @@ function receiveNewToken() {
 };
 
 /**
- * Add required functionality
+ * Set freeagent token up globally and set up method to catch request for adding time
  *
  * @param access_token
  */
 function loadItUp( access_token ) {
-    console.log( access_token );
+    freeagent_token = access_token;
+    catchXhr();
+}
+
+/**
+ * Hook into the xhr for adding time and create freeagent timeslip
+ */
+function catchXhr() {
+    jQuery(document).ajaxSend(function(e, xhr, settings) {
+        if ( '/helpdesk/tickets/390/time_sheets' == settings.url && 'undefined' !== typeof settings.data ) {
+            if ( settings.data.indexOf( 'time_entry' ) > 5 ) {
+                addFreeAgentTimeslip( settings.data );
+            }
+        }
+    });
+};
+
+/**
+ * Create timeslip in freeagent
+ *
+ * @param data
+ */
+function addFreeAgentTimeslip( data ) {
+    // @todo parse data
+    // @todo create object for freeagent timeslip
+    // @todo process request to make/edit timeslip
+    console.log( freeagent_token, data );
 }
 
 
