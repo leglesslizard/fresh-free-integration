@@ -36,8 +36,8 @@ function doRequest( method, url ) {
  * If access token is returned
  */
 function receiveNewToken() {
-    responseObj  = JSON.parse( this.responseText );
-    access_token = responseObj.access_token;
+    var responseObj  = JSON.parse( this.responseText );
+    var access_token = responseObj.access_token;
 
     // If we have an access token start doing stuff
     if ( 'string' === typeof access_token ) {
@@ -61,30 +61,21 @@ function loadItUp( access_token ) {
  * Hook into the xhr for adding time and create freeagent timeslip
  */
 function catchXhr() {
-
-    // Mock up for local @todo Remove when all is working on freshdesk
-    if ( 'local.wordpress.dev' === window.location.hostname ) {
-        data = 'utf8=%E2%9C%93&authenticity_token=WhAhKozM8HkolyO3Qa%2BX6cWHBFQqIMjm0cgHVwg%2FiRQ%3D&time_entry%5Bworkable_id%5D=9005487861&time_entry%5Buser_id%5D=9006138143&time_entry%5Bhhmm%5D=01%3A10&time_entry%5Bbillable%5D=0&time_entry%5Bexecuted_at%5D=23+Mar%2C+2016&time_entry%5Bnote%5D=njhgfgjhkb%2Cn';
-        displayFreeAgentProjects();
-        displayFreeAgentTasks();
-        addFreeAgentTimeslip( data );
-    } else {
-        // Hook into sent request for time added and use the data in freeagent timeslip
-        jQuery( document ).ajaxSend( function ( e, xhr, settings ) {
-            if ( '/helpdesk/tickets/390/time_sheets' == settings.url ) {
-                if ( 'undefined' !== typeof settings.data && settings.data.indexOf( 'time_entry' ) > 5 ) {
-                    addFreeAgentTimeslip( settings.data );
-                }
+    // Hook into sent request for time added and use the data in freeagent timeslip
+    jQuery( document ).ajaxSend( function ( e, xhr, settings ) {
+        if ( '/helpdesk/tickets/390/time_sheets' == settings.url ) {
+            if ( 'undefined' !== typeof settings.data && settings.data.indexOf( 'time_entry' ) > 5 ) {
+                addFreeAgentTimeslip( settings.data );
             }
-        } );
-        // Hook into complete request for adding a new timeslip so that html elements are loaded before custom fields are added
-        jQuery( document ).ajaxComplete( function ( e, xhr, settings ) {
-            if ( '/helpdesk/tickets/390/time_sheets/new' == settings.url ) {
-                displayFreeAgentProjects();
-                displayFreeAgentTasks();
-            }
-        } );
-    }
+        }
+    } );
+    // Hook into complete request for adding a new timeslip so that html elements are loaded before custom fields are added
+    jQuery( document ).ajaxComplete( function ( e, xhr, settings ) {
+        if ( '/helpdesk/tickets/390/time_sheets/new' == settings.url ) {
+            displayFreeAgentProjects();
+            displayFreeAgentTasks();
+        }
+    } );
 };
 
 /**
@@ -114,9 +105,9 @@ function displayFreeAgentTasks() {
  * Insert project list as select box on time entry form
  */
 function returnProjects() {
-    projects = JSON.parse( this.responseText );
-    var html = '<dt><label for="freeagent_project">Project</label></dt>';
-    html    += '<dd id="freeagent_projects"><select name="freeagent_project" >';
+    var projects = JSON.parse( this.responseText );
+    var html     = '<dt><label for="freeagent_project">Project</label></dt>';
+    html        += '<dd id="freeagent_projects"><select name="freeagent_project" >';
     if ( projects.projects.length > 0 ) {
         jQuery.each( projects.projects, function ( key, project ) {
             html += '<option value="' + getIDFromURL( project.url ) + '">' + project.name + '</option>';
@@ -143,9 +134,9 @@ function addProjectChangeEvent() {
  * Insert task list as select box on time entry form
  */
 function returnTasks() {
-    tasks = JSON.parse( this.responseText );
-    var html = '<dt class="freeagent_tasks"><label for="freeagent_task">Task</label></dt>';
-    html    += '<dd id="freeagent_tasks" class="freeagent_tasks"><select name="freeagent_task" >';
+    var tasks = JSON.parse( this.responseText );
+    var html  = '<dt class="freeagent_tasks"><label for="freeagent_task">Task</label></dt>';
+    html     += '<dd id="freeagent_tasks" class="freeagent_tasks"><select name="freeagent_task" >';
     if ( tasks.tasks.length > 0 ) {
         jQuery.each( tasks.tasks, function ( key, task ) {
             html += '<option value="' + getIDFromURL( task.url ) + '">' + task.name + '</option>';
@@ -184,14 +175,15 @@ function getIDFromURL( url ) {
 function addFreeAgentTimeslip( data ) {
     var dataObj  = parseQueryString( data );
     var timeslip = {
-        user     : getFreeAgentUser( dataObj['time_entry[user_id]'] ),
-        project  : jQuery( 'select[name="freeagent_project"]' ).val(),
-        task     : jQuery( 'select[name="freeagent_task"]' ).val(),
-        dated_on : getFreeAgentDate( dataObj['time_entry[executed_at]'] ),
-        hours    : dataObj['time_entry[hhmm]'],
-        comment  : dataObj['time_entry[note]']
+        'user'     : getFreeAgentUser( dataObj['time_entry[user_id]'] ),
+        'project'  : jQuery( 'select[name="freeagent_project"]' ).val(),
+        'task'     : jQuery( 'select[name="freeagent_task"]' ).val(),
+        'dated_on' : getFreeAgentDate( dataObj['time_entry[executed_at]'] ),
+        'hours'    : dataObj['time_entry[hhmm]'],
+        'comment'  : dataObj['time_entry[note]']
     };
-    sendTimeslip( timeslip );
+    var request = { timeslip : timeslip };
+    sendTimeslip( request );
 }
 
 /**
@@ -204,6 +196,8 @@ function sendTimeslip( timeslip ) {
     xhr.setRequestHeader( 'Authorization', 'Bearer ' + freeagent_token );
     xhr.setRequestHeader( 'Content-Type', 'application/json' );
     xhr.send( JSON.stringify( timeslip ) );
+
+    //@todo if request unsuccessful alert an error "timeslip not created" with api message
 }
 
 /**
@@ -242,14 +236,14 @@ function parseQueryString( query ) {
  */
 function getFreeAgentUser( user_id ) {
     switch ( user_id ) {
-        case '9006066204' :
-            return '32890';
-        case '9006066244' :
-            return '32891';
-        case '9006152662' :
-            return '32892';
-        case '9006138143' :
-            return '32889';
+        case '9006066204' : //neil
+            return '1263';
+        case '9006066244' : //danny
+            return '1263';
+        case '9006152662' : //darren
+            return '1263';
+        case '9006138143' : //joey
+            return '1263';
     }
 }
 
