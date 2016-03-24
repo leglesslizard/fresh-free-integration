@@ -62,22 +62,23 @@ function loadItUp( access_token ) {
  */
 function catchXhr() {
 
-    // Mock up for local @todo Remove when working on freshdesk
+    // Mock up for local @todo Remove when all is working on freshdesk
     if ( 'local.wordpress.dev' === window.location.hostname ) {
         data = 'utf8=%E2%9C%93&authenticity_token=WhAhKozM8HkolyO3Qa%2BX6cWHBFQqIMjm0cgHVwg%2FiRQ%3D&time_entry%5Bworkable_id%5D=9005487861&time_entry%5Buser_id%5D=9006138143&time_entry%5Bhhmm%5D=01%3A10&time_entry%5Bbillable%5D=0&time_entry%5Bexecuted_at%5D=23+Mar%2C+2016&time_entry%5Bnote%5D=njhgfgjhkb%2Cn';
         displayFreeAgentProjects();
         displayFreeAgentTasks();
         addFreeAgentTimeslip( data );
     } else {
-
-        // @todo add dropdown for freeagent projects
-        // @todo add dropdown for hour types - developer/senior
+        // Hook into sent request for time added and use the data in freeagent timeslip
         jQuery( document ).ajaxSend( function ( e, xhr, settings ) {
             if ( '/helpdesk/tickets/390/time_sheets' == settings.url ) {
                 if ( 'undefined' !== typeof settings.data && settings.data.indexOf( 'time_entry' ) > 5 ) {
                     addFreeAgentTimeslip( settings.data );
                 }
             }
+        } );
+        // Hook into complete request for adding a new timeslip so that html elements are loaded before custom fields are added
+        jQuery( document ).ajaxComplete( function ( e, xhr, settings ) {
             if ( '/helpdesk/tickets/390/time_sheets/new' == settings.url ) {
                 displayFreeAgentProjects();
                 displayFreeAgentTasks();
@@ -134,7 +135,6 @@ function returnProjects() {
 function addProjectChangeEvent() {
     var select = jQuery( 'select[name="freeagent_project"]' );
     select.on( 'change', function() {
-        console.log( 'changed!' );
         refreshTasks( select.val() );
     });
 }
@@ -177,15 +177,93 @@ function getIDFromURL( url ) {
 }
 
 /**
- * Create timeslip in freeagent
+ * Setup timeslip object
  *
  * @param data
  */
 function addFreeAgentTimeslip( data ) {
-    // @todo parse data
-    // @todo create object for freeagent timeslip
-    // @todo process request to make/edit timeslip
-    console.log( freeagent_token, data );
+    var dataObj  = parseQueryString( data );
+    var timeslip = {
+        user     : getFreeAgentUser( dataObj['time_entry[user_id]'] ),
+        project  : jQuery( 'select[name="freeagent_project"]' ).val(),
+        task     : jQuery( 'select[name="freeagent_task"]' ).val(),
+        dated_on : getFreeAgentDate( dataObj['time_entry[executed_at]'] ),
+        hours    : dataObj['time_entry[hhmm]'],
+        comment  : dataObj['time_entry[note]']
+    };
+    sendTimeslip( timeslip );
+}
+
+/**
+ * Create timeslip in freeagent
+ *
+ * @param timeslip
+ */
+function sendTimeslip( timeslip ) {
+    var xhr = doRequest( 'POST', 'timeslips' );
+    xhr.setRequestHeader( 'Authorization', 'Bearer ' + freeagent_token );
+    xhr.setRequestHeader( 'Content-Type', 'application/json' );
+    xhr.send( JSON.stringify( timeslip ) );
+}
+
+/**
+ * Parse a query string into a nice neat object
+ *
+ * @param query
+ * @returns {{}}
+ */
+function parseQueryString( query ) {
+    var query_string = {};
+    var vars         = query.split( '&' );
+
+    for ( var i = 0; i < vars.length; i++ ) {
+        var pair = vars[i].split( '=' );
+        pair[0]  = decodeURIComponent( pair[0] );
+        pair[1]  = decodeURIComponent( pair[1] );
+        // If first entry with this name
+        if ( typeof query_string[pair[0]] === 'undefined' ) {
+            query_string[pair[0]] = pair[1];
+            // If second entry with this name
+        } else if ( typeof query_string[pair[0]] === 'string' ) {
+            query_string[pair[0]] = [ query_string[pair[0]], pair[1] ];
+            // If third or later entry with this name
+        } else {
+            query_string[pair[0]].push( pair[1] );
+        }
+    }
+    return query_string;
+};
+
+/**
+ * Return the freeagent contact id that corresponds to the freshdesk user id
+ *
+ * @param user_id
+ * @returns {*}
+ */
+function getFreeAgentUser( user_id ) {
+    switch ( user_id ) {
+        case '9006066204' :
+            return '32890';
+        case '9006066244' :
+            return '32891';
+        case '9006152662' :
+            return '32892';
+        case '9006138143' :
+            return '32889';
+    }
+}
+
+/**
+ * Convert the given date into a date freeagent understands
+ *
+ * @param date
+ * @returns {string}
+ */
+function getFreeAgentDate( date ) {
+    date = date.replace( /\+/g, ' ' );
+    date = date.replace( ',', '' );
+    date = new Date( date );
+    return date.getFullYear() + '-0' + ( date.getMonth()+1 ) + '-' + date.getDate();
 }
 
 
