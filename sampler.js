@@ -1,15 +1,26 @@
+// Change these to suit your FreeAgent! (except freeagent_token as this is generated before requests are made)
 var freeagent_token = '';
 var freeagent_url   = 'https://api.sandbox.freeagent.com/v2/';
+var client_id       = '3ZmVwTjVPKmdHDmBhpq-uA';
+var client_secret   = 'yF4e7ajdL0M5YPv-Eh3eTg';
+var refresh_token   = '1rZkfkZxrhIlWFHrJ7K_P95LBIXzlYJ0rYORQ5ySo';
+var freeagent_users = {
+    '9006066204' : '1263', // Neil
+    '9006066244' : '1263', // Danny
+    '9006152662' : '1263', // Darren
+    '9006138143' : '1263'  // Joey
+};
+
 // Refresh access token on page load but don't do anything else until the request has been processed
 // If an access token is found then functionality will be added to the page in the "LoadItUp" method
-refreshToken( '3ZmVwTjVPKmdHDmBhpq-uA', 'yF4e7ajdL0M5YPv-Eh3eTg', '1rZkfkZxrhIlWFHrJ7K_P95LBIXzlYJ0rYORQ5ySo' );
+refreshToken();
 
 /**
  * Generate a new access token before carrying out any requests
  *
  * @returns {XMLHttpRequest}
  */
-function refreshToken( client_id, client_secret, refresh_token) {
+function refreshToken() {
     var xhr = doRequest( 'POST','token_endpoint' );
     xhr.setRequestHeader( 'Authorization', 'Basic ' + client_id + ':' + client_secret );
     xhr.setRequestHeader( 'Content-Type', 'application/x-www-form-urlencoded' );
@@ -175,7 +186,7 @@ function getIDFromURL( url ) {
 function addFreeAgentTimeslip( data ) {
     var dataObj  = parseQueryString( data );
     var timeslip = {
-        'user'     : getFreeAgentUser( dataObj['time_entry[user_id]'] ),
+        'user'     : freeagent_users.user_id,
         'project'  : jQuery( 'select[name="freeagent_project"]' ).val(),
         'task'     : jQuery( 'select[name="freeagent_task"]' ).val(),
         'dated_on' : getFreeAgentDate( dataObj['time_entry[executed_at]'] ),
@@ -227,25 +238,6 @@ function parseQueryString( query ) {
     }
     return query_string;
 };
-
-/**
- * Return the freeagent contact id that corresponds to the freshdesk user id
- *
- * @param user_id
- * @returns {*}
- */
-function getFreeAgentUser( user_id ) {
-    switch ( user_id ) {
-        case '9006066204' : //neil
-            return '1263';
-        case '9006066244' : //danny
-            return '1263';
-        case '9006152662' : //darren
-            return '1263';
-        case '9006138143' : //joey
-            return '1263';
-    }
-}
 
 /**
  * Convert the given date into a date freeagent understands
