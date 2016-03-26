@@ -146,6 +146,7 @@ function addProjectChangeEvent() {
  */
 function returnTasks() {
     var tasks = JSON.parse( this.responseText );
+    var error = false;
     var html  = '<dt class="freeagent_tasks"><label for="freeagent_task">Task</label></dt>';
     html     += '<dd id="freeagent_tasks" class="freeagent_tasks"><select name="freeagent_task" >';
     if ( tasks.tasks.length > 0 ) {
@@ -153,10 +154,17 @@ function returnTasks() {
             html += '<option value="' + getIDFromURL( task.url ) + '">' + task.name + '</option>';
         } );
     } else {
-        html += '<option value="">No tasks available for current project</option>';
+        html += '<option value="">No tasks available for this project</option>';
+        error = true;
     }
     html += '</select></dd>';
     jQuery( html ).insertAfter( '#add_new_time_entry dl dd#freeagent_projects' );
+
+    if ( error ) {
+        var select = jQuery( 'select[name="freeagent_task"]' );
+        select.css( 'color', 'red' );
+        select.css( 'border', '1px solid red' );
+    }
 }
 
 /**
@@ -206,9 +214,18 @@ function sendTimeslip( timeslip ) {
     var xhr = doRequest( 'POST', 'timeslips' );
     xhr.setRequestHeader( 'Authorization', 'Bearer ' + freeagent_token );
     xhr.setRequestHeader( 'Content-Type', 'application/json' );
+    xhr.onload = handleTimeslipResponse;
     xhr.send( JSON.stringify( timeslip ) );
+}
 
-    //@todo if request unsuccessful alert an error "timeslip not created" with api message
+/**
+ * Alert user if timeslip was not created in freeagent
+ */
+function handleTimeslipResponse() {
+    if ( this.status !== 200 || this.status !== 201 ) {
+        var response = JSON.parse( this.responseText );
+        alert( "Timeslip not created in freeagent: " + response.errors[0].message );
+    }
 }
 
 /**
