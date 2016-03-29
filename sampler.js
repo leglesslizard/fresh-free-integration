@@ -140,7 +140,7 @@ function returnProjects() {
             html += '<option value="' + getIDFromURL( project.url ) + '" ' + selected + '>' + project.name + '</option>';
         } );
     } else {
-       html += '<option value="">No projects found</option>' ;
+        html += '<option value="">No projects found</option>' ;
     }
     html += '</select>';
     jQuery( html ).insertAfter( input );
