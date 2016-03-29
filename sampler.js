@@ -1,14 +1,14 @@
 // Change these to suit your FreeAgent! (except freeagent_token as this is generated before requests are made)
 var freeagent_token = '';
-var freeagent_url   = 'https://api.sandbox.freeagent.com/v2/';
+var freeagent_url   = 'https://api.freeagent.com/v2/';
 var client_id       = '3ZmVwTjVPKmdHDmBhpq-uA';
 var client_secret   = 'yF4e7ajdL0M5YPv-Eh3eTg';
-var refresh_token   = '1rZkfkZxrhIlWFHrJ7K_P95LBIXzlYJ0rYORQ5ySo';
+var refresh_token   = '10d3PjEMYHTrOpt4P77gYeXWXp_JUJgKkQRGuSg9I';
 var freeagent_users = {
-    '9006066204' : '1263', // Neil
-    '9006066244' : '1263', // Danny
-    '9006152662' : '1263', // Darren
-    '9006138143' : '1263'  // Joey
+    '9006066204' : '135821', // Neil
+    '9006066244' : '243878', // Danny
+    '9006152662' : '400392', // Darren
+    '9006138143' : '267421'  // Joey
 };
 
 // Refresh access token on page load but don't do anything else until the request has been processed
@@ -65,7 +65,25 @@ function receiveNewToken() {
  */
 function loadItUp( access_token ) {
     freeagent_token = access_token;
+    displayFreeAgentProjects();
+    addProjectChangeEvent();
+    addTriggerForTasks();
     catchXhr();
+}
+
+/**
+ * Add task dropdown when user clicks 'Add Time' button
+ */
+function addTriggerForTasks() {
+    jQuery( '#TimesheetTab' ).on( 'click', '#triggerAddTime', function() {
+        if ( ! jQuery( '#timeentry_add' ).length > 0 ) {
+            jQuery( document ).ajaxStop( function () {
+                displayFreeAgentTasks();
+            });
+        } else {
+            displayFreeAgentTasks();
+        }
+    });
 }
 
 /**
@@ -74,20 +92,24 @@ function loadItUp( access_token ) {
 function catchXhr() {
     // Hook into sent request for time added and use the data in freeagent timeslip
     jQuery( document ).ajaxSend( function ( e, xhr, settings ) {
-        if ( '/helpdesk/tickets/390/time_sheets' == settings.url ) {
+        if ( endsWith( settings.url, '/time_sheets' ) ) {
             if ( 'undefined' !== typeof settings.data && settings.data.indexOf( 'time_entry' ) > 5 ) {
                 addFreeAgentTimeslip( settings.data );
             }
         }
     } );
-    // Hook into complete request for adding a new timeslip so that html elements are loaded before custom fields are added
-    jQuery( document ).ajaxComplete( function ( e, xhr, settings ) {
-        if ( '/helpdesk/tickets/390/time_sheets/new' == settings.url ) {
-            displayFreeAgentProjects();
-            displayFreeAgentTasks();
-        }
-    } );
 };
+
+/**
+ * Helper method to check string ending on ajax requests
+ *
+ * @param str
+ * @param suffix
+ * @returns {boolean}
+ */
+function endsWith( str, suffix ) {
+    return str.indexOf( suffix, str.length - suffix.length ) !== -1;
+}
 
 /**
  * Run query to return projects and output html list on time entry form
@@ -98,6 +120,40 @@ function displayFreeAgentProjects() {
     xhr.setRequestHeader( 'Content-Type', 'application/json' );
     xhr.onload = returnProjects;
     xhr.send();
+}
+
+/**
+ * Insert project list as select box on ticket fields form
+ */
+function returnProjects() {
+    var input           = jQuery( '#helpdesk_ticket_custom_field_freeagent_project_315244' );
+    input.hide();
+    var current_project = input.val();
+    var projects        = JSON.parse( this.responseText );
+    var html            = '<select class="dropdown_blank" id="freeagent_project" name="freeagent_project" title="FreeAgent Project" tabindex="-1">';
+    if ( projects.projects.length > 0 ) {
+        jQuery.each( projects.projects, function ( key, project ) {
+            var selected = '';
+            if ( current_project == getIDFromURL( project.url ) ) {
+                selected = 'selected';
+            }
+            html += '<option value="' + getIDFromURL( project.url ) + '" ' + selected + '>' + project.name + '</option>';
+        } );
+    } else {
+       html += '<option value="">No projects found</option>' ;
+    }
+    html += '</select>';
+    jQuery( html ).insertAfter( input );
+}
+
+/**
+ * Add event to update project input field so project selection is stored
+ */
+function addProjectChangeEvent() {
+    var select = 'select[name="freeagent_project"]';
+    jQuery( '#TicketPropertiesFields' ).on( 'change', select, function() {
+        jQuery( 'input[name="helpdesk_ticket[custom_field][freeagent_project_315244]"]' ).val( jQuery( select ).val() );
+    });
 }
 
 /**
@@ -113,38 +169,10 @@ function displayFreeAgentTasks() {
 }
 
 /**
- * Insert project list as select box on time entry form
- */
-function returnProjects() {
-    var projects = JSON.parse( this.responseText );
-    var html     = '<dt><label for="freeagent_project">Project</label></dt>';
-    html        += '<dd id="freeagent_projects"><select name="freeagent_project" >';
-    if ( projects.projects.length > 0 ) {
-        jQuery.each( projects.projects, function ( key, project ) {
-            html += '<option value="' + getIDFromURL( project.url ) + '">' + project.name + '</option>';
-        } );
-    } else {
-        html += '<option value="">No projects available</option>';
-    }
-    html += '</select></dd>';
-    jQuery( html ).insertAfter( '#add_new_time_entry dl dd:first-of-type' );
-    addProjectChangeEvent();
-}
-
-/**
- * Add event to change task list dependant on project chosen
- */
-function addProjectChangeEvent() {
-    var select = jQuery( 'select[name="freeagent_project"]' );
-    select.on( 'change', function() {
-        refreshTasks( select.val() );
-    });
-}
-
-/**
  * Insert task list as select box on time entry form
  */
 function returnTasks() {
+    jQuery( '.freeagent_tasks' ).remove();
     var tasks = JSON.parse( this.responseText );
     var error = false;
     var html  = '<dt class="freeagent_tasks"><label for="freeagent_task">Task</label></dt>';
@@ -158,21 +186,13 @@ function returnTasks() {
         error = true;
     }
     html += '</select></dd>';
-    jQuery( html ).insertAfter( '#add_new_time_entry dl dd#freeagent_projects' );
+    jQuery( html ).insertAfter( '#add_new_time_entry dl dd:first-of-type' );
 
     if ( error ) {
         var select = jQuery( 'select[name="freeagent_task"]' );
         select.css( 'color', 'red' );
         select.css( 'border', '1px solid red' );
     }
-}
-
-/**
- * Remove task list and replace once new query has been run for chosen project
- */
-function refreshTasks() {
-    jQuery( '.freeagent_tasks' ).remove();
-    displayFreeAgentTasks();
 }
 
 /**
@@ -193,8 +213,9 @@ function getIDFromURL( url ) {
  */
 function addFreeAgentTimeslip( data ) {
     var dataObj  = parseQueryString( data );
+    var user_id  = jQuery( 'select#time_entry_user_id' ).val();
     var timeslip = {
-        'user'     : freeagent_users.user_id,
+        'user'     : freeagent_users[user_id],
         'project'  : jQuery( 'select[name="freeagent_project"]' ).val(),
         'task'     : jQuery( 'select[name="freeagent_task"]' ).val(),
         'dated_on' : getFreeAgentDate( dataObj['time_entry[executed_at]'] ),
@@ -222,7 +243,7 @@ function sendTimeslip( timeslip ) {
  * Alert user if timeslip was not created in freeagent
  */
 function handleTimeslipResponse() {
-    if ( this.status !== 200 || this.status !== 201 ) {
+    if ( ! jQuery.inArray( this.status, [ 200, 201 ] ) ) {
         var response = JSON.parse( this.responseText );
         alert( "Timeslip not created in freeagent: " + response.errors[0].message );
     }
@@ -268,37 +289,3 @@ function getFreeAgentDate( date ) {
     date = new Date( date );
     return date.getFullYear() + '-0' + ( date.getMonth()+1 ) + '-' + date.getDate();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
