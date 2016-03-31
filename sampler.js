@@ -66,7 +66,6 @@ function receiveNewToken() {
 function loadItUp( access_token ) {
     freeagent_token = access_token;
     displayFreeAgentProjects();
-    addProjectChangeEvent();
     addTriggerForTasks();
     catchXhr();
 }
@@ -130,20 +129,47 @@ function returnProjects() {
     input.hide();
     var current_project = input.val();
     var projects        = JSON.parse( this.responseText );
-    var html            = '<select class="dropdown_blank" id="freeagent_project" name="freeagent_project" title="FreeAgent Project" tabindex="-1">';
+    var html            = '<select id="freeagent_project" name="freeagent_project" title="FreeAgent Project" tabindex="-1"></select>';
+    jQuery( html ).insertAfter( input );
+
+    var select = jQuery( 'select[name="freeagent_project"]' );
     if ( projects.projects.length > 0 ) {
         jQuery.each( projects.projects, function ( key, project ) {
-            var selected = '';
+            var option   = jQuery( '<option></option>' );
+            select.append( option.attr( 'value', getIDFromURL( project.url ) ).text( project.name ) );
             if ( current_project == getIDFromURL( project.url ) ) {
-                selected = 'selected';
+                option.prop( 'selected', true );
             }
-            html += '<option value="' + getIDFromURL( project.url ) + '" ' + selected + '>' + project.name + '</option>';
+            getContactName( project );
         } );
     } else {
-        html += '<option value="">No projects found</option>' ;
+        select.append( jQuery( '<option></option>' ).attr( 'value', '' ).text( 'No Projects Found' ) );
     }
-    html += '</select>';
-    jQuery( html ).insertAfter( input );
+    addProjectChangeEvent();
+}
+
+/**
+ * Requests contact for given project and attached the organisation name or contact name to the appropriate option
+ *
+ * @param project
+ */
+function getContactName( project ) {
+    var xhr = new XMLHttpRequest();
+    xhr.open( 'GET', project.contact, true );
+    xhr.setRequestHeader( 'Authorization', 'Bearer ' + freeagent_token );
+    xhr.setRequestHeader( 'Content-Type', 'application/json' );
+    xhr.onload = function() {
+        var contact      = JSON.parse( this.responseText );
+        var contact_name = '';
+        if ( '' != contact.contact.organisation_name ) {
+            contact_name = contact.contact.organisation_name;
+        } else {
+            contact_name = contact.contact.first_name + ' ' + contact.contact.last_name;
+        }
+        var option = jQuery( 'select[name="freeagent_project"] option[value="'+getIDFromURL( project.url )+'"]' );
+        option.text( contact_name + ' - ' + option.text() );
+    };
+    xhr.send();
 }
 
 /**
