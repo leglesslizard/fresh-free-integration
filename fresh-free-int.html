@@ -1,3 +1,4 @@
+<script type="text/javascript">
 // Change these to suit your FreeAgent! (except freeagent_token as this is generated before requests are made)
 var freeagent_token = '';
 var freeagent_url   = 'https://api.freeagent.com/v2/';
@@ -65,6 +66,16 @@ function receiveNewToken() {
  */
 function loadItUp( access_token ) {
     freeagent_token = access_token;
+  
+    jQuery( document ).ajaxSuccess( function( event, xhr, settings ) {
+        if ( endsWith( settings.url, '/subscriptions' ) ) {
+          	if ( jQuery( '#helpdesk_ticket_custom_field_freeagent_project_315244' ).is( ':visible' ) ) { 
+            	displayFreeAgentProjects();
+            	addTriggerForTasks();
+                catchXhr();
+            }
+        }
+	});
     displayFreeAgentProjects();
     addTriggerForTasks();
     catchXhr();
@@ -315,3 +326,4 @@ function getFreeAgentDate( date ) {
     date = new Date( date );
     return date.getFullYear() + '-0' + ( date.getMonth()+1 ) + '-' + date.getDate();
 }
+</script>
