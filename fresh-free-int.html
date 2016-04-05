@@ -69,9 +69,9 @@ function loadItUp( access_token ) {
   
     jQuery( document ).ajaxSuccess( function( event, xhr, settings ) {
         if ( endsWith( settings.url, '/subscriptions' ) ) {
-          	if ( jQuery( '#helpdesk_ticket_custom_field_freeagent_project_315244' ).is( ':visible' ) ) { 
-            	displayFreeAgentProjects();
-            	addTriggerForTasks();
+          	if ( jQuery( '#helpdesk_ticket_custom_field_freeagent_project_315244' ).is( ':visible' ) ) {
+                displayFreeAgentProjects();
+                addTriggerForTasks();
                 catchXhr();
             }
         }
@@ -125,6 +125,7 @@ function endsWith( str, suffix ) {
  * Run query to return projects and output html list on time entry form
  */
 function displayFreeAgentProjects() {
+    jQuery( '#freeagent_projects' ).remove();
     var xhr = doRequest( 'GET', 'projects?view=active' );
     xhr.setRequestHeader( 'Authorization', 'Bearer ' + freeagent_token );
     xhr.setRequestHeader( 'Content-Type', 'application/json' );
